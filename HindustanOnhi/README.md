@@ -104,7 +104,7 @@ Visit `http://localhost:5173`
 
 | Role   | Email              | Password   |
 |--------|--------------------|------------|
-| Admin  | admin@hindustanonhi.com | admin123 |
+| Admin  | adm| admin123 |
 | User   | priya@example.com  | user123    |
 
 ---
