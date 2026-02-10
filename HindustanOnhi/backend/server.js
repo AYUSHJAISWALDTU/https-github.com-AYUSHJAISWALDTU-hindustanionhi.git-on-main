@@ -5,11 +5,24 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const Sentry = require('@sentry/node');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 // Load env vars
 dotenv.config();
+
+// ===========================
+// Sentry Error Monitoring
+// ===========================
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  });
+  console.log('📡 Sentry error monitoring initialized');
+}
 
 // Connect to database
 connectDB();
@@ -19,16 +32,33 @@ const app = express();
 // ===========================
 // Security & Performance
 // ===========================
-app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+}));
 app.use(compression());
 
-// Rate limiting
+// Trust proxy (for correct IP in rate limiting behind reverse proxy)
+app.set('trust proxy', 1);
+
+// General rate limiting — 200 requests per 15 min
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later' },
 });
 app.use('/api/', limiter);
+
+// Stricter rate limiting for auth endpoints — 20 requests per 15 min
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts, please try again in 15 minutes' },
+});
 
 // ===========================
 // Body Parsing & CORS
@@ -47,13 +77,14 @@ app.use(
 // ===========================
 // API Routes
 // ===========================
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', authLimiter, require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/chatbot', require('./routes/chatbotRoutes'));
+app.use('/api', require('./routes/seoRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

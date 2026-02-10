@@ -4,6 +4,8 @@ import { FiFilter, FiX } from 'react-icons/fi';
 import API from '../utils/api';
 import ProductCard from '../components/common/ProductCard';
 import Loader from '../components/common/Loader';
+import SEO from '../components/common/SEO';
+import { trackViewProductList, trackSearch } from '../utils/analytics';
 
 /**
  * ShopPage — product listing with filters, sorting, and pagination
@@ -61,6 +63,10 @@ export default function ShopPage() {
         setProducts(data.products);
         setTotalPages(data.totalPages);
         setTotal(data.total);
+
+        // Track product list view & search
+        trackViewProductList(filters.category || 'Shop All', data.products);
+        if (filters.search) trackSearch(filters.search);
       } catch (err) {
         console.error('Failed to fetch products:', err);
       } finally {
@@ -122,8 +128,47 @@ export default function ShopPage() {
     return filters.search ? `Search: "${filters.search}"` : 'All Products';
   };
 
+  const getSEOTitle = () => {
+    if (filters.category) {
+      const cat = categories.find((c) => c.slug === filters.category);
+      if (cat) return `Buy ${cat.name} Online — Ethnic ${cat.name} for Women`;
+    }
+    if (filters.search) return `Search Results for "${filters.search}"`;
+    return 'Shop All Indian Ethnic Wear Online — Odhnis, Sarees, Kurtis & More';
+  };
+
+  const getSEODescription = () => {
+    if (filters.category) {
+      const cat = categories.find((c) => c.slug === filters.category);
+      if (cat) return `Browse our curated collection of ${cat.name.toLowerCase()} at Hindustani Odhni. Handcrafted with premium fabrics. Free shipping on orders above ₹999. Buy now!`;
+    }
+    return 'Shop premium Indian ethnic fashion. Handloom odhnis, cotton dupattas, silk sarees, kurtis, lehengas & festive wear. Free delivery across India.';
+  };
+
+  const getSEOKeywords = () => {
+    const base = 'Indian ethnic wear online, buy ethnic fashion';
+    if (filters.category) {
+      const cat = categories.find((c) => c.slug === filters.category);
+      if (cat) return `buy ${cat.name.toLowerCase()} online, ${cat.name.toLowerCase()} for women, ${base}, Hindustani Odhni`;
+    }
+    return `handloom odhni online, cotton odhni for women, ${base}, Hindustani Odhni`;
+  };
+
   return (
     <div className="listing-page container">
+      <SEO
+        title={getSEOTitle()}
+        description={getSEODescription()}
+        keywords={getSEOKeywords()}
+        canonical={filters.category ? `/shop?category=${filters.category}` : '/shop'}
+        breadcrumbs={[
+          { name: 'Home', url: '/' },
+          { name: 'Shop', url: '/shop' },
+          ...(filters.category
+            ? [{ name: getCategoryTitle(), url: `/shop?category=${filters.category}` }]
+            : []),
+        ]}
+      />
       {/* Header */}
       <div className="listing-header">
         <div>

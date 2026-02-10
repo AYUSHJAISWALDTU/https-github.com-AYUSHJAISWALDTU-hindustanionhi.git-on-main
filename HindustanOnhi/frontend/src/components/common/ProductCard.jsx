@@ -16,6 +16,7 @@ export default function ProductCard({ product }) {
   const wishlisted = isInWishlist(product._id);
   const imageUrl = product.images?.[0]?.url || 'https://via.placeholder.com/400x500?text=HindustanOnhi';
   const categoryName = product.category?.name || '';
+  const imageAlt = product.images?.[0]?.alt || `${product.name}${categoryName ? ' — ' + categoryName : ''} by Hindustani Odhni`;
 
   return (
     <div className="product-card">
@@ -24,7 +25,7 @@ export default function ProductCard({ product }) {
         {!imgLoaded && <div className="img-placeholder" style={{ width: '100%', height: '100%', position: 'absolute' }} />}
         <img
           src={imageUrl}
-          alt={product.name}
+          alt={imageAlt}
           loading="lazy"
           onLoad={() => setImgLoaded(true)}
           style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}

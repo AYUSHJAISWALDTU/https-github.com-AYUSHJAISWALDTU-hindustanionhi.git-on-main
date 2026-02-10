@@ -4,6 +4,7 @@ import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiHeadphones } from 'reac
 import API from '../utils/api';
 import ProductCard from '../components/common/ProductCard';
 import Loader from '../components/common/Loader';
+import SEO from '../components/common/SEO';
 
 /**
  * HomePage — hero banner, categories, featured products, offers, features
@@ -38,6 +39,13 @@ export default function HomePage() {
 
   return (
     <div>
+      <SEO
+        title="Shop Handloom Odhnis, Sarees, Kurtis & Ethnic Wear Online"
+        description="Shop premium handcrafted Indian ethnic fashion at Hindustani Odhni. Handloom cotton odhnis, silk dupattas, sarees, kurtis, lehengas & festive wear. Free delivery across India."
+        keywords="handloom odhni online, cotton odhni for women, ethnic dupatta online India, Indian ethnic fashion, sarees online India, kurtis for women, lehengas online, Hindustani Odhni, festive wear, ajrakh printed dupatta, bandhani odhni"
+        canonical="/"
+      />
+
       {/* ===== HERO SECTION ===== */}
       <section className="hero">
         <div className="hero-content">
@@ -64,7 +72,7 @@ export default function HomePage() {
             <div className="hero-image-wrapper">
               <img
                 src="https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800&h=1000&fit=crop"
-                alt="Indian ethnic fashion"
+                alt="Handcrafted Indian ethnic fashion by Hindustani Odhni — premium sarees, kurtis and festive wear"
                 loading="eager"
               />
             </div>
@@ -132,7 +140,7 @@ export default function HomePage() {
             <Link to={`/shop?category=${cat.slug}`} key={cat._id} className="category-card">
               <img
                 src={cat.image || 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400'}
-                alt={cat.name}
+                alt={`Shop ${cat.name} online at Hindustani Odhni`}
                 loading="lazy"
               />
               <div className="category-card-overlay">

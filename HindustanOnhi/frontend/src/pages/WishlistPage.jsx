@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import ProductCard from '../components/common/ProductCard';
 import Loader from '../components/common/Loader';
+import SEO from '../components/common/SEO';
 import { FiHeart } from 'react-icons/fi';
 
 /**
@@ -44,6 +45,7 @@ export default function WishlistPage() {
 
   return (
     <div className="wishlist-page">
+      <SEO title="My Wishlist" description="Your wishlisted items at Hindustani Odhni. Save your favorite ethnic wear pieces and shop when you're ready." canonical="/wishlist" noIndex={true} />
       <div className="container">
         <h1 className="page-title">My Wishlist</h1>
 

@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { formatPrice, formatDate } from '../utils/helpers';
 import Loader from '../components/common/Loader';
+import SEO from '../components/common/SEO';
 import toast from 'react-hot-toast';
 import {
-  FiUser, FiPackage, FiMapPin, FiEdit2, FiTrash2, FiPlus, FiChevronRight,
+  FiUser, FiPackage, FiMapPin, FiEdit2, FiTrash2, FiPlus, FiChevronRight, FiXCircle, FiRotateCcw, FiTruck,
 } from 'react-icons/fi';
 
 /* ─── tabs ─── */
@@ -20,11 +21,30 @@ const TABS = [
 const statusColor = (s) => {
   const map = {
     processing: '#e67e22',
+    confirmed: '#2980b9',
     shipped: '#3498db',
     delivered: '#27ae60',
     cancelled: '#e74c3c',
+    returned: '#8e44ad',
   };
   return map[s] || '#888';
+};
+
+/* ─── shipping status labels ─── */
+const shippingStatusLabel = {
+  pending: 'Pending',
+  shipped: 'Shipped',
+  in_transit: 'In Transit',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
+};
+
+const shippingStatusColor = {
+  pending: '#94a3b8',
+  shipped: '#3498db',
+  in_transit: '#e67e22',
+  out_for_delivery: '#8e44ad',
+  delivered: '#27ae60',
 };
 
 /* ─── main component ─── */
@@ -37,6 +57,12 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState(null);
+
+  /* ── cancel / return modal state ── */
+  const [cancelModal, setCancelModal] = useState(null); // order id
+  const [returnModal, setReturnModal] = useState(null); // order id
+  const [reasonText, setReasonText] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   /* ── profile edit state ── */
   const [editProfile, setEditProfile] = useState(false);
@@ -134,6 +160,54 @@ export default function DashboardPage() {
     }
   };
 
+  /* ── cancel order handler ── */
+  const handleCancelOrder = async () => {
+    if (!cancelModal) return;
+    setActionLoading(true);
+    try {
+      const { data } = await api.post(`/orders/${cancelModal}/cancel`, { reason: reasonText });
+      setOrders((prev) => prev.map((o) => (o._id === cancelModal ? data.order : o)));
+      toast.success(data.message || 'Order cancelled');
+      setCancelModal(null);
+      setReasonText('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Cancel failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* ── return order handler ── */
+  const handleReturnOrder = async () => {
+    if (!returnModal) return;
+    setActionLoading(true);
+    try {
+      const { data } = await api.post(`/orders/${returnModal}/return`, { reason: reasonText });
+      setOrders((prev) => prev.map((o) => (o._id === returnModal ? data.order : o)));
+      toast.success(data.message || 'Return request submitted');
+      setReturnModal(null);
+      setReasonText('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Return request failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* ── helpers for cancel/return eligibility ── */
+  const canCancel = (order) => {
+    return !['shipped', 'delivered', 'cancelled', 'returned'].includes(order.orderStatus) &&
+      !order.cancellation?.requested;
+  };
+
+  const canReturn = (order) => {
+    if (order.orderStatus !== 'delivered') return false;
+    if (order.returnRequest?.requested) return false;
+    if (!order.deliveredAt) return false;
+    const daysSince = (Date.now() - new Date(order.deliveredAt).getTime()) / (1000 * 60 * 60 * 24);
+    return daysSince <= 2;
+  };
+
   /* ───────── render sections ───────── */
   const renderOrders = () => {
     if (ordersLoading) return <Loader />;
@@ -203,6 +277,152 @@ export default function DashboardPage() {
                       {order.isPaid ? 'Paid' : 'Unpaid'}
                     </span>
                   </p>
+
+                  {/* Blue Dart Shipping & Tracking */}
+                  {order.shipping?.awbNumber && (
+                    <div style={{
+                      background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10,
+                      padding: '14px 18px', margin: '14px 0'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 8 }}>
+                        <FiTruck size={16} color="#0369a1" />
+                        <span style={{ fontWeight: 700, color: '#0369a1', fontSize: '0.9rem' }}>
+                          Shipping via {order.shipping.courier || 'Blue Dart'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: '0.85rem' }}>
+                        <div>
+                          <span style={{ color: '#64748b' }}>AWB No: </span>
+                          <strong style={{ fontFamily: 'monospace' }}>{order.shipping.awbNumber}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: '#64748b' }}>Status: </span>
+                          <strong style={{ color: shippingStatusColor[order.shipping.status] || '#888' }}>
+                            {shippingStatusLabel[order.shipping.status] || order.shipping.status}
+                          </strong>
+                        </div>
+                        {order.shipping.shippedAt && (
+                          <div>
+                            <span style={{ color: '#64748b' }}>Shipped: </span>
+                            <span>{formatDate(order.shipping.shippedAt)}</span>
+                          </div>
+                        )}
+                        {order.shipping.deliveredAt && (
+                          <div>
+                            <span style={{ color: '#64748b' }}>Delivered: </span>
+                            <span style={{ color: '#27ae60', fontWeight: 600 }}>{formatDate(order.shipping.deliveredAt)}</span>
+                          </div>
+                        )}
+                      </div>
+                      {order.shipping.trackingUrl && (
+                        <a
+                          href={order.shipping.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                            marginTop: 10, padding: '8px 18px', background: '#0369a1', color: '#fff',
+                            borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: '0.82rem',
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          🔍 Track on {order.shipping.courier || 'Blue Dart'}
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Refund info */}
+                  {order.refund?.status === 'completed' && (
+                    <div style={{ background: '#d1fae5', borderRadius: 8, padding: '10px 14px', margin: '12px 0' }}>
+                      <p style={{ margin: 0, color: '#065f46', fontWeight: 600, fontSize: '0.9rem' }}>
+                        💰 Refund of {formatPrice(order.refund.amount)} processed
+                      </p>
+                      {order.refund.razorpayRefundId && (
+                        <p style={{ margin: '2px 0 0', color: '#065f46', fontSize: '0.78rem' }}>
+                          Refund ID: {order.refund.razorpayRefundId}
+                        </p>
+                      )}
+                      <p style={{ margin: '2px 0 0', color: '#065f46', fontSize: '0.78rem' }}>
+                        Amount will reflect in 5–7 business days.
+                      </p>
+                    </div>
+                  )}
+                  {order.refund?.status === 'initiated' && (
+                    <div style={{ background: '#fef3c7', borderRadius: 8, padding: '10px 14px', margin: '12px 0' }}>
+                      <p style={{ margin: 0, color: '#92400e', fontWeight: 600, fontSize: '0.9rem' }}>
+                        ⏳ Refund initiated — processing…
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Cancellation status */}
+                  {order.cancellation?.requested && order.orderStatus !== 'cancelled' && (
+                    <div style={{ background: '#fef3c7', borderRadius: 8, padding: '10px 14px', margin: '12px 0' }}>
+                      <p style={{ margin: 0, color: '#92400e', fontSize: '0.85rem' }}>
+                        ⏳ Cancellation requested — awaiting review
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Return status */}
+                  {order.returnRequest?.requested && (
+                    <div style={{
+                      background: order.returnRequest.approved === false ? '#fee2e2' : order.returnRequest.approved ? '#d1fae5' : '#fef3c7',
+                      borderRadius: 8, padding: '10px 14px', margin: '12px 0'
+                    }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: order.returnRequest.approved === false ? '#991b1b' : order.returnRequest.approved ? '#065f46' : '#92400e' }}>
+                        {order.returnRequest.approved === null && '⏳ Return requested — awaiting review'}
+                        {order.returnRequest.approved === true && !order.returnRequest.pickupCompleted && '✅ Return approved — pickup pending'}
+                        {order.returnRequest.approved === true && order.returnRequest.pickupCompleted && '✅ Returned — pickup completed'}
+                        {order.returnRequest.approved === false && '❌ Return request rejected'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                    <button
+                      className="btn btn-outline"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const res = await api.get(`/orders/${order._id}/invoice`, { responseType: 'blob' });
+                          const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = `invoice-${order._id}.pdf`;
+                          link.click();
+                          window.URL.revokeObjectURL(url);
+                        } catch {
+                          toast.error('Failed to download invoice');
+                        }
+                      }}
+                    >
+                      📄 Download Invoice
+                    </button>
+
+                    {canCancel(order) && (
+                      <button
+                        className="btn btn-outline"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', borderColor: '#e74c3c', color: '#e74c3c' }}
+                        onClick={(e) => { e.stopPropagation(); setCancelModal(order._id); setReasonText(''); }}
+                      >
+                        <FiXCircle /> Cancel Order
+                      </button>
+                    )}
+
+                    {canReturn(order) && (
+                      <button
+                        className="btn btn-outline"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', borderColor: '#8e44ad', color: '#8e44ad' }}
+                        onClick={(e) => { e.stopPropagation(); setReturnModal(order._id); setReasonText(''); }}
+                      >
+                        <FiRotateCcw /> Return Order
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -376,6 +596,7 @@ export default function DashboardPage() {
   /* ───────── main render ───────── */
   return (
     <div className="dashboard-page">
+      <SEO title="My Account" description="Manage your Hindustani Odhni account. View orders, update profile, manage addresses and track shipments." canonical="/dashboard" noIndex={true} />
       <div className="container">
         <h1 className="page-title">My Account</h1>
 
@@ -401,6 +622,86 @@ export default function DashboardPage() {
           </section>
         </div>
       </div>
+
+      {/* ─── Cancel Order Modal ─── */}
+      {cancelModal && (
+        <div className="modal-overlay" onClick={() => setCancelModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <h3 style={{ color: '#e74c3c', marginBottom: '0.5rem' }}>Cancel Order</h3>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Are you sure you want to cancel this order? This cannot be undone.
+              {orders.find((o) => o._id === cancelModal)?.isPaid && (
+                <span style={{ display: 'block', marginTop: 8, color: '#065f46', fontWeight: 600 }}>
+                  💰 A full refund will be initiated automatically.
+                </span>
+              )}
+            </p>
+            <div className="form-group">
+              <label>Reason for cancellation</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                placeholder="e.g. Found a better price, ordered by mistake, changed my mind…"
+                value={reasonText}
+                onChange={(e) => setReasonText(e.target.value)}
+                required
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn btn-primary"
+                style={{ background: '#e74c3c', borderColor: '#e74c3c' }}
+                onClick={handleCancelOrder}
+                disabled={actionLoading || !reasonText.trim()}
+              >
+                {actionLoading ? 'Cancelling…' : 'Confirm Cancellation'}
+              </button>
+              <button className="btn btn-outline" onClick={() => setCancelModal(null)}>
+                Keep Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Return Order Modal ─── */}
+      {returnModal && (
+        <div className="modal-overlay" onClick={() => setReturnModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <h3 style={{ color: '#8e44ad', marginBottom: '0.5rem' }}>Return Order</h3>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              You can return this order within 2 days of delivery. After approval, we'll arrange a pickup
+              and process your refund once we receive the product.
+            </p>
+            <div className="form-group">
+              <label>Reason for return</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                placeholder="e.g. Wrong size, defective product, not as described…"
+                value={reasonText}
+                onChange={(e) => setReasonText(e.target.value)}
+                required
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn btn-primary"
+                style={{ background: '#8e44ad', borderColor: '#8e44ad' }}
+                onClick={handleReturnOrder}
+                disabled={actionLoading || !reasonText.trim()}
+              >
+                {actionLoading ? 'Submitting…' : 'Submit Return Request'}
+              </button>
+              <button className="btn btn-outline" onClick={() => setReturnModal(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

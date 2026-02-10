@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * Helper: Send token in response (cookie + JSON)
@@ -88,6 +91,63 @@ exports.login = async (req, res, next) => {
     sendTokenResponse(user, 200, res);
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * @desc    Google OAuth login / register
+ * @route   POST /api/auth/google
+ * @access  Public
+ */
+exports.googleLogin = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential is required',
+      });
+    }
+
+    // Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    // Check if user already exists (by googleId or email)
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+
+    if (user) {
+      // If user exists with email but no googleId (registered via email), link accounts
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+        if (!user.avatar && picture) user.avatar = picture;
+        await user.save();
+      }
+    } else {
+      // Create new user from Google data
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        avatar: picture || '',
+        authProvider: 'google',
+      });
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    console.error('Google auth error:', error.message);
+    res.status(401).json({
+      success: false,
+      message: 'Google authentication failed',
+    });
   }
 };
 

@@ -1,30 +1,63 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { FiHeart, FiShoppingBag, FiTruck, FiRefreshCw, FiShield } from 'react-icons/fi';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import {
+  FiHeart, FiShoppingBag, FiTruck, FiRefreshCw, FiShield,
+  FiChevronDown, FiChevronUp, FiX, FiCheck, FiPackage,
+} from 'react-icons/fi';
 import API from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { formatPrice, getDiscount, renderStars, formatDate } from '../utils/helpers';
+import { trackViewProduct, trackAddToCart as trackAddToCartEvent } from '../utils/analytics';
 import ProductCard from '../components/common/ProductCard';
 import Loader from '../components/common/Loader';
+import SEO from '../components/common/SEO';
 import toast from 'react-hot-toast';
 
+/* ─── Recently viewed helper ─── */
+const MAX_RECENT = 10;
+const getRecentlyViewed = () => {
+  try { return JSON.parse(localStorage.getItem('recentlyViewed') || '[]'); } catch { return []; }
+};
+const addToRecentlyViewed = (product) => {
+  const list = getRecentlyViewed().filter((p) => p._id !== product._id);
+  list.unshift({
+    _id: product._id,
+    name: product.name,
+    slug: product.slug,
+    price: product.price,
+    comparePrice: product.comparePrice,
+    images: product.images?.slice(0, 1),
+    ratingsAverage: product.ratingsAverage,
+    ratingsCount: product.ratingsCount,
+  });
+  localStorage.setItem('recentlyViewed', JSON.stringify(list.slice(0, MAX_RECENT)));
+};
+
 /**
- * ProductDetailPage — full product view with gallery, sizes, reviews, related
+ * ProductDetailPage — full product view with gallery, sizes, size chart,
+ * fabric & care, style-with, recently viewed, accordion details
  */
 export default function ProductDetailPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { toggleWishlist, isInWishlist, user } = useAuth();
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [showSizeChart, setShowSizeChart] = useState(false);
+  const [imageZoom, setImageZoom] = useState(false);
+
+  /* ── Accordion state ── */
+  const [openAccordion, setOpenAccordion] = useState('details');
 
   // Review form
   const [reviewRating, setReviewRating] = useState(5);
@@ -32,12 +65,18 @@ export default function ProductDetailPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const toggleAccordion = useCallback((key) => {
+    setOpenAccordion((prev) => (prev === key ? '' : key));
+  }, []);
+
   useEffect(() => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
         const { data } = await API.get(`/products/slug/${slug}`);
         setProduct(data.product);
+        addToRecentlyViewed(data.product);
+        trackViewProduct(data.product);
 
         // Set default selections
         if (data.product.sizes?.length) {
@@ -65,7 +104,11 @@ export default function ProductDetailPage() {
     fetchProduct();
     setActiveImage(0);
     setQuantity(1);
+    setOpenAccordion('details');
     window.scrollTo(0, 0);
+
+    // Load recently viewed (exclude current slug)
+    setRecentlyViewed(getRecentlyViewed().filter((p) => p.slug !== slug));
   }, [slug]);
 
   const handleAddToCart = async () => {
@@ -74,6 +117,14 @@ export default function ProductDetailPage() {
       return;
     }
     await addToCart(product._id, selectedSize, selectedColor, quantity);
+    trackAddToCartEvent(product, selectedSize, selectedColor, quantity);
+  };
+
+  const handleBuyNow = async () => {
+    if (!selectedSize) { toast.error('Please select a size'); return; }
+    await addToCart(product._id, selectedSize, selectedColor, quantity);
+    trackAddToCartEvent(product, selectedSize, selectedColor, quantity);
+    navigate('/checkout');
   };
 
   const handleSubmitReview = async (e) => {
@@ -116,17 +167,50 @@ export default function ProductDetailPage() {
   }
 
   const discount = getDiscount(product.price, product.comparePrice);
+  const selectedSizeObj = product.sizes?.find((s) => s.size === selectedSize);
+  const stockLeft = selectedSizeObj?.stock ?? null;
+  const hasSizeChart = product.sizeChart && product.sizeChart.length > 0;
+  const hasFabricDetails = product.fabricDetails && (product.fabricDetails.fabric || product.fabricDetails.lining || product.fabricDetails.transparency || product.fabricDetails.washCare?.length);
+  const hasModelInfo = product.modelInfo && (product.modelInfo.height || product.modelInfo.wearingSize);
 
   return (
     <div className="product-detail container">
+      <SEO
+        title={`${product.name}${product.fabric ? ' — ' + product.fabric : ''}${product.occasion ? ' for ' + product.occasion.charAt(0).toUpperCase() + product.occasion.slice(1) + ' Wear' : ''}`}
+        description={product.description?.substring(0, 155) + (product.description?.length > 155 ? '...' : '')}
+        keywords={[
+          product.name,
+          product.fabric,
+          product.category?.name,
+          product.occasion,
+          ...(product.tags || []),
+          'Hindustani Odhni',
+          'buy online',
+          'Indian ethnic wear',
+        ].filter(Boolean).join(', ')}
+        canonical={`/product/${product.slug}`}
+        image={product.images?.[0]?.url}
+        type="product"
+        product={product}
+        breadcrumbs={[
+          { name: 'Home', url: '/' },
+          { name: 'Shop', url: '/shop' },
+          ...(product.category ? [{ name: product.category.name, url: `/shop?category=${product.category.slug}` }] : []),
+          { name: product.name },
+        ]}
+      />
+
       <div className="product-detail-grid">
         {/* ===== IMAGE GALLERY ===== */}
         <div className="product-gallery">
-          <div className="product-gallery-main">
+          <div className="product-gallery-main" onClick={() => setImageZoom(true)} style={{ cursor: 'zoom-in' }}>
             <img
               src={product.images[activeImage]?.url || 'https://via.placeholder.com/600x800'}
               alt={product.images[activeImage]?.alt || product.name}
             />
+            {discount > 0 && (
+              <span className="product-badge-detail">{discount}% OFF</span>
+            )}
           </div>
           {product.images.length > 1 && (
             <div className="product-gallery-thumbs">
@@ -172,12 +256,20 @@ export default function ProductDetailPage() {
                 <span className="off">{discount}% OFF</span>
               </>
             )}
+            <span className="tax-info">Inclusive of all taxes</span>
           </div>
 
           {/* Sizes */}
           {product.sizes?.length > 0 && (
             <div className="product-sizes">
-              <h3>Select Size</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3>Select Size</h3>
+                {hasSizeChart && (
+                  <button type="button" className="size-chart-link" onClick={() => setShowSizeChart(true)}>
+                    📏 Size Chart
+                  </button>
+                )}
+              </div>
               <div className="size-options">
                 {product.sizes.map((s) => (
                   <button
@@ -190,6 +282,9 @@ export default function ProductDetailPage() {
                   </button>
                 ))}
               </div>
+              {stockLeft !== null && stockLeft > 0 && stockLeft <= 5 && (
+                <p className="low-stock-warning">⚡ Only {stockLeft} left in stock</p>
+              )}
             </div>
           )}
 
@@ -226,47 +321,159 @@ export default function ProductDetailPage() {
             <button className="btn btn-primary btn-lg" onClick={handleAddToCart}>
               <FiShoppingBag /> Add to Cart
             </button>
+            <button className="btn btn-accent btn-lg" onClick={handleBuyNow}>
+              ⚡ Buy Now
+            </button>
             <button
-              className={`btn btn-secondary btn-lg`}
+              className="btn btn-secondary btn-icon-only"
               onClick={() => toggleWishlist(product._id)}
+              title={isInWishlist(product._id) ? 'Remove from wishlist' : 'Add to wishlist'}
             >
-              <FiHeart fill={isInWishlist(product._id) ? '#D32F2F' : 'none'} />
-              {isInWishlist(product._id) ? 'Wishlisted' : 'Wishlist'}
+              <FiHeart fill={isInWishlist(product._id) ? '#D32F2F' : 'none'} color={isInWishlist(product._id) ? '#D32F2F' : undefined} />
             </button>
           </div>
 
-          {/* Description */}
-          <div className="product-description">
-            <h3>Description</h3>
-            <p>{product.description}</p>
+          {/* Delivery & Trust Badges */}
+          <div className="product-trust-badges">
+            <div className="trust-badge"><FiTruck /> <span>Delivery in 3–5 working days</span></div>
+            <div className="trust-badge"><FiRefreshCw /> <span>Easy Returns</span></div>
+            <div className="trust-badge"><FiPackage /> <span>COD Available</span></div>
+            <div className="trust-badge"><FiShield /> <span>100% Authentic</span></div>
+            <div className="trust-badge">🇮🇳 <span>Made in India</span></div>
           </div>
 
-          {/* Meta */}
-          <div className="product-meta">
-            {product.fabric && <span><strong>Fabric:</strong> {product.fabric}</span>}
-            {product.occasion && <span><strong>Occasion:</strong> {product.occasion}</span>}
-            {product.tags?.length > 0 && (
-              <span><strong>Tags:</strong> {product.tags.join(', ')}</span>
+          {/* Model Info */}
+          {hasModelInfo && (
+            <div className="model-info-bar">
+              {product.modelInfo.height && <span>Model height: {product.modelInfo.height}</span>}
+              {product.modelInfo.wearingSize && <span>Wearing size: {product.modelInfo.wearingSize}</span>}
+            </div>
+          )}
+
+          {/* ═══════ ACCORDION DETAILS ═══════ */}
+          <div className="product-accordion">
+            {/* Product Details */}
+            <div className={`accordion-item ${openAccordion === 'details' ? 'open' : ''}`}>
+              <button className="accordion-header" onClick={() => toggleAccordion('details')}>
+                <span>Product Details</span>
+                {openAccordion === 'details' ? <FiChevronUp /> : <FiChevronDown />}
+              </button>
+              {openAccordion === 'details' && (
+                <div className="accordion-body">
+                  <p>{product.description}</p>
+                  <div className="detail-grid">
+                    {product.fabric && <div><strong>Fabric:</strong> {product.fabric}</div>}
+                    {product.occasion && <div><strong>Occasion:</strong> {product.occasion}</div>}
+                    {product.tags?.length > 0 && <div><strong>Tags:</strong> {product.tags.join(', ')}</div>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fabric & Care */}
+            {hasFabricDetails && (
+              <div className={`accordion-item ${openAccordion === 'fabric' ? 'open' : ''}`}>
+                <button className="accordion-header" onClick={() => toggleAccordion('fabric')}>
+                  <span>Fabric & Care</span>
+                  {openAccordion === 'fabric' ? <FiChevronUp /> : <FiChevronDown />}
+                </button>
+                {openAccordion === 'fabric' && (
+                  <div className="accordion-body">
+                    <div className="detail-grid">
+                      {product.fabricDetails.fabric && <div><strong>Fabric:</strong> {product.fabricDetails.fabric}</div>}
+                      {product.fabricDetails.lining && <div><strong>Lining:</strong> {product.fabricDetails.lining}</div>}
+                      {product.fabricDetails.transparency && <div><strong>Transparency:</strong> {product.fabricDetails.transparency}</div>}
+                    </div>
+                    {product.fabricDetails.washCare?.length > 0 && (
+                      <div className="wash-care-list">
+                        <strong>Care Instructions:</strong>
+                        <ul>
+                          {product.fabricDetails.washCare.map((w, i) => <li key={i}>{w}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-          </div>
 
-          {/* Features */}
-          <div className="product-features">
-            <div className="product-feature">
-              <div className="icon"><FiTruck /></div>
-              <p>Free Shipping above ₹999</p>
-            </div>
-            <div className="product-feature">
-              <div className="icon"><FiRefreshCw /></div>
-              <p>7-day Easy Returns</p>
-            </div>
-            <div className="product-feature">
-              <div className="icon"><FiShield /></div>
-              <p>100% Authentic</p>
+            {/* Size & Fit */}
+            {(hasSizeChart || hasModelInfo) && (
+              <div className={`accordion-item ${openAccordion === 'sizefit' ? 'open' : ''}`}>
+                <button className="accordion-header" onClick={() => toggleAccordion('sizefit')}>
+                  <span>Size & Fit</span>
+                  {openAccordion === 'sizefit' ? <FiChevronUp /> : <FiChevronDown />}
+                </button>
+                {openAccordion === 'sizefit' && (
+                  <div className="accordion-body">
+                    {hasModelInfo && (
+                      <p style={{ marginBottom: 12, color: 'var(--color-text-light)', fontSize: '0.9rem' }}>
+                        {product.modelInfo.height && <>Model height: <strong>{product.modelInfo.height}</strong> · </>}
+                        {product.modelInfo.wearingSize && <>Wearing size: <strong>{product.modelInfo.wearingSize}</strong></>}
+                      </p>
+                    )}
+                    {hasSizeChart && (
+                      <div className="size-chart-table-wrap">
+                        <table className="size-chart-table">
+                          <thead>
+                            <tr><th>Size</th><th>Bust</th><th>Waist</th><th>Hip</th><th>Length</th></tr>
+                          </thead>
+                          <tbody>
+                            {product.sizeChart.map((row, i) => (
+                              <tr key={i} className={selectedSize === row.size ? 'highlight' : ''}>
+                                <td><strong>{row.size}</strong></td>
+                                <td>{row.bust || '—'}</td>
+                                <td>{row.waist || '—'}</td>
+                                <td>{row.hip || '—'}</td>
+                                <td>{row.length || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <p className="chart-note">All measurements are in inches</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Shipping & Returns */}
+            <div className={`accordion-item ${openAccordion === 'shipping' ? 'open' : ''}`}>
+              <button className="accordion-header" onClick={() => toggleAccordion('shipping')}>
+                <span>Shipping & Returns</span>
+                {openAccordion === 'shipping' ? <FiChevronUp /> : <FiChevronDown />}
+              </button>
+              {openAccordion === 'shipping' && (
+                <div className="accordion-body">
+                  <div className="shipping-details">
+                    <div className="ship-row"><FiCheck className="ship-icon" /> Free shipping on orders above ₹999</div>
+                    <div className="ship-row"><FiCheck className="ship-icon" /> Standard delivery in 3–5 business days</div>
+                    <div className="ship-row"><FiCheck className="ship-icon" /> Cash on Delivery available</div>
+                    <div className="ship-row"><FiCheck className="ship-icon" /> Easy returns within 7 days of delivery</div>
+                    <div className="ship-row"><FiCheck className="ship-icon" /> Shipped via Blue Dart courier</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ===== STYLE WITH THIS ===== */}
+      {product.styleWith?.length > 0 && (
+        <section className="style-with-section">
+          <div className="section-title">
+            <h2>✨ Style With This</h2>
+            <div className="divider"></div>
+          </div>
+          <div className="products-grid">
+            {product.styleWith.map((p) => (
+              <ProductCard key={p._id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ===== REVIEWS ===== */}
       <div className="reviews-section">
@@ -352,6 +559,69 @@ export default function ProductDetailPage() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* ===== RECENTLY VIEWED ===== */}
+      {recentlyViewed.length > 0 && (
+        <section className="products-section recently-viewed-section">
+          <div className="section-title">
+            <h2>👀 Recently Viewed</h2>
+            <div className="divider"></div>
+          </div>
+          <div className="products-grid">
+            {recentlyViewed.slice(0, 4).map((p) => (
+              <ProductCard key={p._id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ===== SIZE CHART MODAL ===== */}
+      {showSizeChart && hasSizeChart && (
+        <div className="modal-overlay" onClick={() => setShowSizeChart(false)}>
+          <div className="modal-content size-chart-modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0 }}>📏 Size Chart</h3>
+              <button className="btn-icon" onClick={() => setShowSizeChart(false)}><FiX /></button>
+            </div>
+            <table className="size-chart-table">
+              <thead>
+                <tr><th>Size</th><th>Bust</th><th>Waist</th><th>Hip</th><th>Length</th></tr>
+              </thead>
+              <tbody>
+                {product.sizeChart.map((row, i) => (
+                  <tr key={i} className={selectedSize === row.size ? 'highlight' : ''}>
+                    <td><strong>{row.size}</strong></td>
+                    <td>{row.bust || '—'}"</td>
+                    <td>{row.waist || '—'}"</td>
+                    <td>{row.hip || '—'}"</td>
+                    <td>{row.length || '—'}"</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="chart-note">All measurements are in inches. Please refer to this chart before ordering.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ===== IMAGE ZOOM MODAL ===== */}
+      {imageZoom && (
+        <div className="modal-overlay image-zoom-overlay" onClick={() => setImageZoom(false)}>
+          <div className="image-zoom-container" onClick={(e) => e.stopPropagation()}>
+            <button className="zoom-close" onClick={() => setImageZoom(false)}><FiX size={20} /></button>
+            <img src={product.images[activeImage]?.url} alt={product.name} className="zoomed-image" />
+            {product.images.length > 1 && (
+              <div className="zoom-thumbs">
+                {product.images.map((img, i) => (
+                  <div key={i} className={`zoom-thumb ${i === activeImage ? 'active' : ''}`} onClick={() => setActiveImage(i)}>
+                    <img src={img.url} alt="" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

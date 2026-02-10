@@ -1,7 +1,10 @@
 /**
  * Global error handler middleware
  * Catches all errors and sends a formatted response
+ * Integrates with Sentry for production error monitoring
  */
+const Sentry = require('@sentry/node');
+
 const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
@@ -36,6 +39,18 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'TokenExpiredError') {
     statusCode = 401;
     message = 'Token expired — please log in again';
+  }
+
+  // Report 5xx errors to Sentry
+  if (statusCode >= 500 && process.env.SENTRY_DSN) {
+    Sentry.captureException(err, {
+      extra: {
+        url: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+        userId: req.user?._id?.toString(),
+      },
+    });
   }
 
   console.error('❌ Error:', err);

@@ -85,6 +85,51 @@ const orderSchema = new mongoose.Schema(
     },
     deliveredAt: Date,
     trackingNumber: String,
+
+    /* ─── Shipping / Blue Dart ─── */
+    shipping: {
+      courier: { type: String, default: 'Blue Dart' },
+      awbNumber: String,
+      status: {
+        type: String,
+        enum: ['pending', 'shipped', 'in_transit', 'out_for_delivery', 'delivered'],
+        default: 'pending',
+      },
+      shippedAt: Date,
+      deliveredAt: Date,
+      trackingUrl: String,
+    },
+
+    /* ─── Cancellation ─── */
+    cancellation: {
+      requested: { type: Boolean, default: false },
+      reason: String,
+      requestedAt: Date,
+      approved: { type: Boolean, default: null },   // null = pending, true/false = decision
+      decidedAt: Date,
+    },
+
+    /* ─── Return ─── */
+    returnRequest: {
+      requested: { type: Boolean, default: false },
+      reason: String,
+      requestedAt: Date,
+      approved: { type: Boolean, default: null },
+      decidedAt: Date,
+      pickupCompleted: { type: Boolean, default: false },
+    },
+
+    /* ─── Refund ─── */
+    refund: {
+      status: {
+        type: String,
+        enum: ['none', 'initiated', 'completed'],
+        default: 'none',
+      },
+      amount: Number,
+      razorpayRefundId: String,
+      refundedAt: Date,
+    },
   },
   { timestamps: true }
 );

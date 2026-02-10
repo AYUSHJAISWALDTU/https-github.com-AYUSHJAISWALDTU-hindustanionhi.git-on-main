@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { FiTrash2, FiShoppingBag, FiArrowRight } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { formatPrice } from '../utils/helpers';
+import SEO from '../components/common/SEO';
 
 /**
  * CartPage — displays cart items with quantity controls and summary
@@ -12,6 +13,7 @@ export default function CartPage() {
   if (!cart.items || cart.items.length === 0) {
     return (
       <div className="cart-page container">
+        <SEO title="Shopping Cart" description="Your shopping cart at Hindustani Odhni. Review your selected ethnic wear before checkout." canonical="/cart" noIndex={true} />
         <div className="empty-state">
           <div className="icon">🛒</div>
           <h3>Your cart is empty</h3>
@@ -31,6 +33,7 @@ export default function CartPage() {
 
   return (
     <div className="cart-page container">
+      <SEO title="Shopping Cart" description="Your shopping cart at Hindustani Odhni. Review your selected ethnic wear before checkout." canonical="/cart" noIndex={true} />
       <h1>Shopping Cart ({cart.totalItems} items)</h1>
 
       <div className="cart-layout">

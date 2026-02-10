@@ -32,8 +32,8 @@ const generateProducts = (categoryMap) => [
     comparePrice: 7999,
     category: categoryMap['Sarees'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800', alt: 'Banarasi Silk Saree Front' },
-      { url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800', alt: 'Banarasi Silk Saree Detail' },
+      { url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800', alt: 'Royal Banarasi silk saree in red with gold zari weaving by Hindustani Odhni' },
+      { url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800', alt: 'Banarasi silk saree pallu detail with traditional motifs by Hindustani Odhni' },
     ],
     sizes: [{ size: 'Free Size', stock: 25 }],
     colors: [{ name: 'Red', hex: '#DC143C' }, { name: 'Maroon', hex: '#800000' }],
@@ -53,7 +53,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 3999,
     category: categoryMap['Sarees'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800', alt: 'Georgette Saree' },
+      { url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800', alt: 'Pastel georgette saree with sequin border for party wear by Hindustani Odhni' },
     ],
     sizes: [{ size: 'Free Size', stock: 40 }],
     colors: [{ name: 'Lavender', hex: '#E6E6FA' }, { name: 'Peach', hex: '#FFDAB9' }],
@@ -73,7 +73,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 1999,
     category: categoryMap['Sarees'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800', alt: 'Cotton Saree' },
+      { url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800', alt: 'Cotton handloom saree with block print for daily wear by Hindustani Odhni' },
     ],
     sizes: [{ size: 'Free Size', stock: 60 }],
     colors: [{ name: 'Blue', hex: '#4169E1' }, { name: 'Green', hex: '#228B22' }],
@@ -94,7 +94,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 2999,
     category: categoryMap['Kurtis'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Anarkali Kurti' },
+      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Embroidered Anarkali kurti with chikankari work for festive wear by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 15 }, { size: 'M', stock: 20 },
@@ -118,7 +118,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 1499,
     category: categoryMap['Kurtis'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'A-Line Kurti' },
+      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Printed A-line kurti with Rajasthani block print for casual wear by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 25 }, { size: 'M', stock: 30 },
@@ -142,7 +142,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 2499,
     category: categoryMap['Kurtis'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Silk Kurti' },
+      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Silk straight kurti with mirror work detailing for festive events by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 10 }, { size: 'M', stock: 18 },
@@ -166,7 +166,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 19999,
     category: categoryMap['Lehengas'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800', alt: 'Bridal Lehenga' },
+      { url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800', alt: 'Bridal red lehenga choli with heavy gold embroidery for wedding by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 5 }, { size: 'M', stock: 8 },
@@ -189,7 +189,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 9999,
     category: categoryMap['Lehengas'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800', alt: 'Pastel Lehenga' },
+      { url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800', alt: 'Pastel floral lehenga in organza for engagement and sangeet by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 10 }, { size: 'M', stock: 12 },
@@ -213,7 +213,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 1299,
     category: categoryMap['Dupattas'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1617627143233-46b828b857e0?w=800', alt: 'Phulkari Dupatta' },
+      { url: 'https://images.unsplash.com/photo-1617627143233-46b828b857e0?w=800', alt: 'Phulkari embroidered dupatta handcrafted in Punjab by Hindustani Odhni' },
     ],
     sizes: [{ size: 'Free Size', stock: 50 }],
     colors: [{ name: 'Multi', hex: '#FF6347' }, { name: 'Yellow', hex: '#FFD700' }],
@@ -233,7 +233,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 1599,
     category: categoryMap['Dupattas'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1617627143233-46b828b857e0?w=800', alt: 'Bandhani Dupatta' },
+      { url: 'https://images.unsplash.com/photo-1617627143233-46b828b857e0?w=800', alt: 'Bandhani silk dupatta with traditional tie-dye pattern by Hindustani Odhni' },
     ],
     sizes: [{ size: 'Free Size', stock: 35 }],
     colors: [{ name: 'Red', hex: '#DC143C' }, { name: 'Orange', hex: '#FF8C00' }],
@@ -254,7 +254,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 5499,
     category: categoryMap['Festive Wear'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1583391733975-b0e3fd6b8cb4?w=800', alt: 'Festive Anarkali' },
+      { url: 'https://images.unsplash.com/photo-1583391733975-b0e3fd6b8cb4?w=800', alt: 'Gold tissue Anarkali suit set with gota patti work for Diwali by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 12 }, { size: 'M', stock: 18 },
@@ -277,7 +277,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 6999,
     category: categoryMap['Festive Wear'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1583391733975-b0e3fd6b8cb4?w=800', alt: 'Velvet Suit' },
+      { url: 'https://images.unsplash.com/photo-1583391733975-b0e3fd6b8cb4?w=800', alt: 'Velvet embroidered suit set with zardozi work for winter wedding by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 8 }, { size: 'M', stock: 12 },
@@ -302,7 +302,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 1799,
     category: categoryMap['Palazzo Sets'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Palazzo Set' },
+      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Floral print palazzo set in rayon for summer casual wear by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 20 }, { size: 'M', stock: 25 },
@@ -326,7 +326,7 @@ const generateProducts = (categoryMap) => [
     comparePrice: 2299,
     category: categoryMap['Palazzo Sets'],
     images: [
-      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Mirror Work Set' },
+      { url: 'https://images.unsplash.com/photo-1594463750939-ebb28c3f7f75?w=800', alt: 'Mirror work palazzo set with Rajasthani embroidery for festive wear by Hindustani Odhni' },
     ],
     sizes: [
       { size: 'S', stock: 14 }, { size: 'M', stock: 20 },

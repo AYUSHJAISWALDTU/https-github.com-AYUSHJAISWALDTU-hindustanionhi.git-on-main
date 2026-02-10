@@ -39,6 +39,7 @@ const productSchema = new mongoose.Schema(
     images: [
       {
         url: { type: String, required: true },
+        public_id: { type: String, default: '' },
         alt: { type: String, default: '' },
       },
     ],
@@ -64,6 +65,40 @@ const productSchema = new mongoose.Schema(
       default: '',
     },
     tags: [String],
+
+    /* ─── Size Chart ─── */
+    sizeChart: [
+      {
+        size: String,
+        bust: String,
+        waist: String,
+        hip: String,
+        length: String,
+      },
+    ],
+
+    /* ─── Fabric & Care Details ─── */
+    fabricDetails: {
+      fabric: { type: String, default: '' },
+      lining: { type: String, default: '' },
+      transparency: { type: String, default: '' },
+      washCare: [String],
+    },
+
+    /* ─── Style With (related product refs) ─── */
+    styleWith: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
+
+    /* ─── Model / Fit Info ─── */
+    modelInfo: {
+      height: { type: String, default: '' },
+      wearingSize: { type: String, default: '' },
+    },
+
     totalStock: {
       type: Number,
       default: 0,

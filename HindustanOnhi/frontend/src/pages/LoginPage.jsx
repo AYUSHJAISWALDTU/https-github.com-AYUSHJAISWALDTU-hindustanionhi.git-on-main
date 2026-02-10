@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import SEO from '../components/common/SEO';
 import toast from 'react-hot-toast';
 
 /**
  * LoginPage — user authentication form
  */
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,8 +28,18 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      await googleLogin(credentialResponse.credential);
+      navigate('/');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google login failed');
+    }
+  };
+
   return (
     <div className="auth-page">
+      <SEO title="Login to Your Account" description="Sign in to your Hindustani Odhni account. Access orders, wishlist and exclusive offers on Indian ethnic fashion." canonical="/login" noIndex={true} />
       <div className="auth-card">
         <div className="logo">
           <h2>🪷 Hindustan<span>Onhi</span></h2>
@@ -62,6 +74,31 @@ export default function LoginPage() {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        {/* Divider */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          margin: '20px 0',
+        }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--color-border, #e2e8f0)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--color-text-muted, #94a3b8)', textTransform: 'uppercase', letterSpacing: '1px' }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--color-border, #e2e8f0)' }} />
+        </div>
+
+        {/* Google Sign In */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => toast.error('Google login failed')}
+            theme="outline"
+            size="large"
+            width="100%"
+            text="signin_with"
+            shape="rectangular"
+          />
+        </div>
 
         <p className="auth-footer">
           Don't have an account? <Link to="/register">Create Account</Link>

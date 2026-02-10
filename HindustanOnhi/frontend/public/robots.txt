@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /cart
+Disallow: /login
+Disallow: /register
+
+# Sitemap
+Sitemap: https://www.hindustanionhi.com/api/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1

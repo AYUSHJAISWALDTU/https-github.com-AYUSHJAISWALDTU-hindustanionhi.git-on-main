@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import API from '../utils/api';
 import { formatPrice } from '../utils/helpers';
+import SEO from '../components/common/SEO';
+import { trackBeginCheckout, trackPurchase } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
 /**
@@ -150,6 +152,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="checkout-page container">
+      <SEO title="Checkout" description="Complete your order at Hindustani Odhni. Secure payment via Razorpay or Cash on Delivery." canonical="/checkout" noIndex={true} />
       <h1>Checkout</h1>
 
       <div className="checkout-layout">

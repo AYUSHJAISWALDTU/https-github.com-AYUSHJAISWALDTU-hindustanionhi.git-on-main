@@ -63,6 +63,16 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  // Google OAuth Login
+  const googleLogin = async (credential) => {
+    const { data } = await API.post('/auth/google', { credential });
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
+    toast.success('Welcome! 🙏');
+    return data;
+  };
+
   // Logout
   const logout = async () => {
     try {
@@ -126,6 +136,7 @@ export function AuthProvider({ children }) {
     wishlist,
     register,
     login,
+    googleLogin,
     logout,
     updateProfile,
     toggleWishlist,

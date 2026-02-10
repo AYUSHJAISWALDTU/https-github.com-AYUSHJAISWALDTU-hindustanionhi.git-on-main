@@ -92,10 +92,9 @@ exports.getProducts = async (req, res, next) => {
  */
 exports.getProduct = async (req, res, next) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug, isActive: true }).populate(
-      'category',
-      'name slug'
-    );
+    const product = await Product.findOne({ slug: req.params.slug, isActive: true })
+      .populate('category', 'name slug')
+      .populate('styleWith', 'name slug images price comparePrice ratingsAverage ratingsCount');
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });

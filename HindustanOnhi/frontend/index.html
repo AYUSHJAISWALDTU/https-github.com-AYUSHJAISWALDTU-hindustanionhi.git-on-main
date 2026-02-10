@@ -4,12 +4,69 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="HindustanOnhi — Premium Indian Ethnic Fashion. Shop sarees, kurtis, lehengas, dupattas, and festive wear online." />
-    <meta name="keywords" content="Indian ethnic fashion, sarees, kurtis, lehengas, dupattas, festive wear, online shopping" />
+
+    <!-- Primary SEO Meta -->
+    <meta name="description" content="Shop premium handcrafted Indian ethnic fashion at Hindustani Odhni. Handloom cotton odhnis, silk dupattas, sarees, kurtis, lehengas & festive wear. Free delivery across India." />
+    <meta name="keywords" content="handloom odhni online, cotton odhni for women, ethnic dupatta online India, Indian ethnic fashion, sarees, kurtis, lehengas, festive wear, ajrakh printed dupatta, bandhani odhni, Hindustani Odhni" />
+    <meta name="author" content="Hindustani Odhni" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="theme-color" content="#B4283C" />
+    <link rel="canonical" href="https://www.hindustanionhi.com/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Hindustani Odhni" />
+    <meta property="og:title" content="Hindustani Odhni — Premium Indian Ethnic Fashion" />
+    <meta property="og:description" content="Shop premium handcrafted Indian ethnic fashion. Handloom cotton odhnis, silk dupattas, sarees, kurtis, lehengas & festive wear. Free delivery across India." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=1200&h=630&fit=crop" />
+    <meta property="og:url" content="https://www.hindustanionhi.com/" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@hindustanionhi" />
+    <meta name="twitter:title" content="Hindustani Odhni — Premium Indian Ethnic Fashion" />
+    <meta name="twitter:description" content="Shop premium handcrafted Indian ethnic fashion. Handloom odhnis, silk dupattas, sarees, kurtis & festive wear." />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=1200&h=630&fit=crop" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <title>HindustanOnhi — Premium Indian Ethnic Fashion</title>
+
+    <title>Hindustani Odhni — Premium Indian Ethnic Fashion | Handloom Odhnis, Sarees, Kurtis</title>
+
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX', {
+        send_page_view: false  // We'll fire page views from React Router
+      });
+    </script>
+
+    <!-- Facebook Pixel -->
+    <script>
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}
+      (window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', 'PIXEL_ID');
+      fbq('track', 'PageView');
+    </script>
+    <noscript>
+      <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=PIXEL_ID&ev=PageView&noscript=1" />
+    </noscript>
   </head>
   <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

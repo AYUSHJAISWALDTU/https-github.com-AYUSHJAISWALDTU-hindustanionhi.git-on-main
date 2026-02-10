@@ -37,9 +37,9 @@ export default function Navbar() {
       {/* Main Nav */}
       <div className="navbar-main">
         {/* Logo */}
-        <Link to="/" className="navbar-logo">
+        <Link to="/" className="navbar-logo" aria-label="Hindustani Odhni — Home">
           <span className="logo-icon">🪷</span>
-          <h1>Hindustan<span>Onhi</span></h1>
+          <span className="logo-text">Hindustan<span>Onhi</span></span>
         </Link>
 
         {/* Desktop Links */}
@@ -87,9 +87,9 @@ export default function Navbar() {
       {/* Mobile Menu */}
       <div className={`mobile-menu ${mobileOpen ? 'open' : ''}`}>
         <div className="mobile-menu-header">
-          <Link to="/" className="navbar-logo" onClick={() => setMobileOpen(false)}>
+          <Link to="/" className="navbar-logo" onClick={() => setMobileOpen(false)} aria-label="Hindustani Odhni — Home">
             <span className="logo-icon">🪷</span>
-            <h1>Hindustan<span>Onhi</span></h1>
+            <span className="logo-text">Hindustan<span>Onhi</span></span>
           </Link>
           <button className="mobile-menu-close" onClick={() => setMobileOpen(false)}>
             <FiX />
