@@ -60,12 +60,13 @@
       fbq('init', 'PIXEL_ID');
       fbq('track', 'PageView');
     </script>
+  </head>
+  <body>
+    <!-- Facebook Pixel NoScript Fallback -->
     <noscript>
       <img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=PIXEL_ID&ev=PageView&noscript=1" />
     </noscript>
-  </head>
-  <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>

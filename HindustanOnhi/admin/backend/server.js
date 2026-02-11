@@ -26,6 +26,16 @@ connectDB();
 
 const app = express();
 
+// Ensure DB connection on every request (for Vercel serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Database connection failed' });
+  }
+});
+
 // ── Security ──
 app.use(helmet({
   crossOriginResourcePolicy: false,
@@ -58,9 +68,22 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Build allowed origins list
+const allowedOrigins = [
+  process.env.ADMIN_FRONTEND_URL || 'http://localhost:5174',
+  'http://localhost:5174',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.ADMIN_FRONTEND_URL || 'http://localhost:5174',
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all in initial deployment; tighten later
+      }
+    },
     credentials: true,
   })
 );
@@ -86,15 +109,20 @@ app.get('/api/admin/health', (req, res) => {
 // ── Error handler ──
 app.use(errorHandler);
 
-// ── Start ──
-const PORT = process.env.PORT || 5002;
-const server = app.listen(PORT, () => {
-  console.log(`\n🛡️  HindustanOnhi Admin API running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Admin Frontend: ${process.env.ADMIN_FRONTEND_URL || 'http://localhost:5174'}\n`);
-});
+// ── Start (only when not on Vercel) ──
+if (process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 5002;
+  const server = app.listen(PORT, () => {
+    console.log(`\n🛡️  HindustanOnhi Admin API running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 Admin Frontend: ${process.env.ADMIN_FRONTEND_URL || 'http://localhost:5174'}\n`);
+  });
 
-process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Rejection:', err.message);
-  server.close(() => process.exit(1));
-});
+  process.on('unhandledRejection', (err) => {
+    console.error('❌ Unhandled Rejection:', err.message);
+    server.close(() => process.exit(1));
+  });
+}
+
+// Export for Vercel serverless
+module.exports = app;

@@ -4,7 +4,7 @@ import axios from 'axios';
  * Axios instance configured for HindustanOnhi API
  */
 const API = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
