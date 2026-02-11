@@ -94,45 +94,192 @@ exports.getProduct = async (req, res, next) => {
  * @route   POST /api/admin/products
  */
 exports.createProduct = async (req, res, next) => {
+  console.log('📦 [CREATE PRODUCT] Request received');
+  console.log('📦 [CREATE PRODUCT] Body keys:', Object.keys(req.body));
+  console.log('📦 [CREATE PRODUCT] Files count:', req.files?.length || 0);
+
   try {
     const data = { ...req.body };
 
-    // Generate slug
+    // ─── VALIDATION: Required fields ───
+    const validationErrors = [];
+
+    if (!data.name || data.name.trim() === '') {
+      validationErrors.push('Product name is required');
+    }
+    if (!data.price || isNaN(Number(data.price)) || Number(data.price) < 0) {
+      validationErrors.push('Valid product price is required (must be a positive number)');
+    }
+    if (!data.category || data.category.trim() === '') {
+      validationErrors.push('Product category is required');
+    }
+    if (!data.description || data.description.trim() === '') {
+      validationErrors.push('Product description is required');
+    }
+
+    if (validationErrors.length > 0) {
+      console.error('❌ [CREATE PRODUCT] Validation failed:', validationErrors);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors.join('. '),
+        errors: validationErrors,
+      });
+    }
+
+    // ─── Parse JSON fields (multipart form sends as strings) ───
+    const parseJSONField = (field, fieldName) => {
+      if (typeof field === 'string' && field.trim()) {
+        try {
+          return JSON.parse(field);
+        } catch (e) {
+          console.error(`⚠️ [CREATE PRODUCT] Failed to parse ${fieldName}:`, e.message);
+          return field === '[]' || field === '' ? [] : field;
+        }
+      }
+      return field;
+    };
+
+    data.sizes = parseJSONField(data.sizes, 'sizes') || [];
+    data.colors = parseJSONField(data.colors, 'colors') || [];
+    data.tags = parseJSONField(data.tags, 'tags') || [];
+    data.images = parseJSONField(data.images, 'images') || [];
+    data.sizeChart = parseJSONField(data.sizeChart, 'sizeChart') || [];
+    data.fabricDetails = parseJSONField(data.fabricDetails, 'fabricDetails') || {};
+    data.styleWith = parseJSONField(data.styleWith, 'styleWith') || [];
+    data.modelInfo = parseJSONField(data.modelInfo, 'modelInfo') || {};
+
+    // ─── Generate unique slug ───
     data.slug = data.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
       + '-' + Date.now().toString(36);
 
-    // Parse JSON fields if sent as strings (multipart form)
-    if (typeof data.sizes === 'string') data.sizes = JSON.parse(data.sizes);
-    if (typeof data.colors === 'string') data.colors = JSON.parse(data.colors);
-    if (typeof data.tags === 'string') data.tags = JSON.parse(data.tags);
-    if (typeof data.images === 'string') data.images = JSON.parse(data.images);
-    if (typeof data.sizeChart === 'string') data.sizeChart = JSON.parse(data.sizeChart);
-    if (typeof data.fabricDetails === 'string') data.fabricDetails = JSON.parse(data.fabricDetails);
-    if (typeof data.styleWith === 'string') data.styleWith = JSON.parse(data.styleWith);
-    if (typeof data.modelInfo === 'string') data.modelInfo = JSON.parse(data.modelInfo);
+    console.log('📦 [CREATE PRODUCT] Generated slug:', data.slug);
 
-    // Handle uploaded files → Cloudinary
+    // ─── Handle image uploads to Cloudinary ───
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map((f) => uploadToCloudinary(f.buffer));
-      const results = await Promise.all(uploadPromises);
-      const uploaded = results.map((r) => ({
-        url: r.url,
-        public_id: r.public_id,
-        alt: data.name,
-      }));
-      data.images = [...(data.images || []), ...uploaded];
+      console.log(`📤 [CREATE PRODUCT] Uploading ${req.files.length} image(s) to Cloudinary...`);
+      
+      const uploadResults = [];
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        try {
+          console.log(`📤 [CREATE PRODUCT] Uploading file ${i + 1}/${req.files.length}: ${file.originalname} (${file.size} bytes)`);
+          const result = await uploadToCloudinary(file.buffer);
+          
+          if (!result || !result.url) {
+            throw new Error(`Cloudinary returned invalid response for file: ${file.originalname}`);
+          }
+          
+          uploadResults.push({
+            url: result.url,
+            public_id: result.public_id,
+            alt: data.name,
+          });
+          console.log(`✅ [CREATE PRODUCT] File ${i + 1} uploaded: ${result.url}`);
+        } catch (uploadError) {
+          console.error(`❌ [CREATE PRODUCT] Failed to upload ${file.originalname}:`, uploadError.message);
+          return res.status(500).json({
+            success: false,
+            message: `Image upload failed for "${file.originalname}": ${uploadError.message}`,
+            error: 'CLOUDINARY_UPLOAD_FAILED',
+          });
+        }
+      }
+      
+      data.images = [...(data.images || []), ...uploadResults];
+      console.log(`✅ [CREATE PRODUCT] All ${uploadResults.length} images uploaded successfully`);
     }
 
-    const product = await Product.create(data);
-    const populated = await Product.findById(product._id).populate('category', 'name slug').populate('styleWith', 'name slug images price comparePrice');
+    // ─── Validate at least one image exists ───
+    if (!data.images || data.images.length === 0) {
+      console.error('❌ [CREATE PRODUCT] No images provided');
+      return res.status(400).json({
+        success: false,
+        message: 'At least one product image is required',
+        error: 'NO_IMAGES',
+      });
+    }
 
+    // ─── Validate all images have valid URLs ───
+    const invalidImages = data.images.filter(img => !img.url || !img.url.startsWith('http'));
+    if (invalidImages.length > 0) {
+      console.error('❌ [CREATE PRODUCT] Invalid image URLs found:', invalidImages);
+      return res.status(400).json({
+        success: false,
+        message: 'One or more images have invalid URLs',
+        error: 'INVALID_IMAGE_URLS',
+      });
+    }
+
+    // ─── Calculate total stock from sizes ───
+    if (data.sizes && Array.isArray(data.sizes)) {
+      data.totalStock = data.sizes.reduce((sum, s) => sum + (Number(s.stock) || 0), 0);
+    }
+
+    // ─── Convert price to number ───
+    data.price = Number(data.price);
+    if (data.comparePrice) data.comparePrice = Number(data.comparePrice);
+
+    console.log('📦 [CREATE PRODUCT] Saving to database...');
+    console.log('📦 [CREATE PRODUCT] Data summary:', {
+      name: data.name,
+      price: data.price,
+      category: data.category,
+      imagesCount: data.images.length,
+      sizesCount: data.sizes?.length || 0,
+      totalStock: data.totalStock,
+    });
+
+    // ─── Create product in database ───
+    const product = await Product.create(data);
+    console.log(`✅ [CREATE PRODUCT] Product created with ID: ${product._id}`);
+
+    // ─── Populate references for response ───
+    const populated = await Product.findById(product._id)
+      .populate('category', 'name slug')
+      .populate('styleWith', 'name slug images price comparePrice');
+
+    // ─── Log action for audit trail ───
     await logAction(req, 'CREATE_PRODUCT', 'Product', product._id, `Created product: ${product.name}`);
 
+    console.log(`✅ [CREATE PRODUCT] Success! Product "${product.name}" saved`);
     res.status(201).json({ success: true, product: populated });
+
   } catch (error) {
+    console.error('❌ [CREATE PRODUCT] Error:', error.message);
+    console.error('❌ [CREATE PRODUCT] Stack:', error.stack);
+
+    // ─── Handle specific MongoDB errors ───
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join('. '),
+        errors: messages,
+        error: 'VALIDATION_ERROR',
+      });
+    }
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `A product with this ${field} already exists`,
+        error: 'DUPLICATE_KEY',
+      });
+    }
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ${error.path}: ${error.value}`,
+        error: 'CAST_ERROR',
+      });
+    }
+
+    // ─── Pass to global error handler ───
     next(error);
   }
 };
@@ -142,37 +289,86 @@ exports.createProduct = async (req, res, next) => {
  * @route   PUT /api/admin/products/:id
  */
 exports.updateProduct = async (req, res, next) => {
+  console.log(`📦 [UPDATE PRODUCT] Request for ID: ${req.params.id}`);
+  console.log('📦 [UPDATE PRODUCT] Body keys:', Object.keys(req.body));
+  console.log('📦 [UPDATE PRODUCT] Files count:', req.files?.length || 0);
+
   try {
     let product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!product) {
+      console.error(`❌ [UPDATE PRODUCT] Product not found: ${req.params.id}`);
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
 
     const data = { ...req.body };
 
-    if (typeof data.sizes === 'string') data.sizes = JSON.parse(data.sizes);
-    if (typeof data.colors === 'string') data.colors = JSON.parse(data.colors);
-    if (typeof data.tags === 'string') data.tags = JSON.parse(data.tags);
-    if (typeof data.images === 'string') data.images = JSON.parse(data.images);
-    if (typeof data.sizeChart === 'string') data.sizeChart = JSON.parse(data.sizeChart);
-    if (typeof data.fabricDetails === 'string') data.fabricDetails = JSON.parse(data.fabricDetails);
-    if (typeof data.styleWith === 'string') data.styleWith = JSON.parse(data.styleWith);
-    if (typeof data.modelInfo === 'string') data.modelInfo = JSON.parse(data.modelInfo);
+    // ─── Parse JSON fields (multipart form sends as strings) ───
+    const parseJSONField = (field, fieldName) => {
+      if (typeof field === 'string' && field.trim()) {
+        try {
+          return JSON.parse(field);
+        } catch (e) {
+          console.error(`⚠️ [UPDATE PRODUCT] Failed to parse ${fieldName}:`, e.message);
+          return field === '[]' || field === '' ? [] : field;
+        }
+      }
+      return field;
+    };
 
-    // Handle uploaded files → Cloudinary
+    data.sizes = parseJSONField(data.sizes, 'sizes');
+    data.colors = parseJSONField(data.colors, 'colors');
+    data.tags = parseJSONField(data.tags, 'tags');
+    data.images = parseJSONField(data.images, 'images');
+    data.sizeChart = parseJSONField(data.sizeChart, 'sizeChart');
+    data.fabricDetails = parseJSONField(data.fabricDetails, 'fabricDetails');
+    data.styleWith = parseJSONField(data.styleWith, 'styleWith');
+    data.modelInfo = parseJSONField(data.modelInfo, 'modelInfo');
+
+    // ─── Handle image uploads to Cloudinary ───
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map((f) => uploadToCloudinary(f.buffer));
-      const results = await Promise.all(uploadPromises);
-      const uploaded = results.map((r) => ({
-        url: r.url,
-        public_id: r.public_id,
-        alt: data.name || product.name,
-      }));
-      data.images = [...(data.images || product.images || []), ...uploaded];
+      console.log(`📤 [UPDATE PRODUCT] Uploading ${req.files.length} image(s) to Cloudinary...`);
+      
+      const uploadResults = [];
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        try {
+          console.log(`📤 [UPDATE PRODUCT] Uploading file ${i + 1}/${req.files.length}: ${file.originalname} (${file.size} bytes)`);
+          const result = await uploadToCloudinary(file.buffer);
+          
+          if (!result || !result.url) {
+            throw new Error(`Cloudinary returned invalid response for file: ${file.originalname}`);
+          }
+          
+          uploadResults.push({
+            url: result.url,
+            public_id: result.public_id,
+            alt: data.name || product.name,
+          });
+          console.log(`✅ [UPDATE PRODUCT] File ${i + 1} uploaded: ${result.url}`);
+        } catch (uploadError) {
+          console.error(`❌ [UPDATE PRODUCT] Failed to upload ${file.originalname}:`, uploadError.message);
+          return res.status(500).json({
+            success: false,
+            message: `Image upload failed for "${file.originalname}": ${uploadError.message}`,
+            error: 'CLOUDINARY_UPLOAD_FAILED',
+          });
+        }
+      }
+      
+      data.images = [...(data.images || product.images || []), ...uploadResults];
+      console.log(`✅ [UPDATE PRODUCT] All ${uploadResults.length} new images uploaded`);
     }
 
-    // Recalc total stock
-    if (data.sizes) {
+    // ─── Recalc total stock ───
+    if (data.sizes && Array.isArray(data.sizes)) {
       data.totalStock = data.sizes.reduce((sum, s) => sum + (Number(s.stock) || 0), 0);
     }
+
+    // ─── Convert price to number if provided ───
+    if (data.price) data.price = Number(data.price);
+    if (data.comparePrice) data.comparePrice = Number(data.comparePrice);
+
+    console.log('📦 [UPDATE PRODUCT] Updating in database...');
 
     product = await Product.findByIdAndUpdate(req.params.id, data, {
       new: true,
@@ -181,8 +377,40 @@ exports.updateProduct = async (req, res, next) => {
 
     await logAction(req, 'UPDATE_PRODUCT', 'Product', req.params.id, `Updated product: ${product.name}`);
 
+    console.log(`✅ [UPDATE PRODUCT] Success! Product "${product.name}" updated`);
     res.status(200).json({ success: true, product });
   } catch (error) {
+    console.error('❌ [UPDATE PRODUCT] Error:', error.message);
+    console.error('❌ [UPDATE PRODUCT] Stack:', error.stack);
+
+    // ─── Handle specific MongoDB errors ───
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join('. '),
+        errors: messages,
+        error: 'VALIDATION_ERROR',
+      });
+    }
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `A product with this ${field} already exists`,
+        error: 'DUPLICATE_KEY',
+      });
+    }
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ${error.path}: ${error.value}`,
+        error: 'CAST_ERROR',
+      });
+    }
+
     next(error);
   }
 };

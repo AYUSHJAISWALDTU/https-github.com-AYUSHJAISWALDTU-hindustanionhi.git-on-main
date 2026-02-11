@@ -15,19 +15,29 @@ const upload = require('../middleware/upload');
 
 router.use(protectAdmin);
 
+// Wrapper to handle multer errors
+const handleUpload = (uploadMiddleware) => (req, res, next) => {
+  uploadMiddleware(req, res, (err) => {
+    if (err) {
+      return upload.errorHandler(err, req, res, next);
+    }
+    next();
+  });
+};
+
 router
   .route('/')
   .get(getProducts)
-  .post(upload.array('imageFiles', 8), createProduct);
+  .post(handleUpload(upload.array('imageFiles', 8)), createProduct);
 
 router
   .route('/:id')
   .get(getProduct)
-  .put(upload.array('imageFiles', 8), updateProduct)
+  .put(handleUpload(upload.array('imageFiles', 8)), updateProduct)
   .delete(deleteProduct);
 
 router.put('/:id/toggle-active', toggleActive);
-router.post('/:id/images', upload.array('imageFiles', 8), uploadImages);
+router.post('/:id/images', handleUpload(upload.array('imageFiles', 8)), uploadImages);
 router.delete('/:id/images/:imageId', deleteImage);
 
 module.exports = router;
